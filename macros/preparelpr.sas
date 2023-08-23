@@ -1,10 +1,5 @@
-/* SVN header
-$Date:  $
-$Revision:  $
-$Author: $
-$Id:  $
-*/
 /* LPR macros, næsten direkte kopieret - skal måske ikke bruges */
+
 %macro vwLPR(st,sl);
     %local I;
   proc sql;
@@ -28,8 +23,9 @@ $Id:  $
 	%end;
   quit;
 %mend;
+
 %macro aariLPR(st,sl);
-        %local I;
+    %local I;
   %do I=&st %to &st;
     data master.lpr_ind&I;
       set master.lpr_ind&I;
@@ -37,8 +33,9 @@ $Id:  $
     %runquit;
   %end;
 %mend;
+
 %macro vwLPRsksopr(st,sl);
-        %local I;
+    %local I;
   proc sql;
     %do I=&st %to &sl;
       create view master.vwLPRsksopr&I as
@@ -52,8 +49,10 @@ $Id:  $
 	%end;
   quit;
 %mend;
+
+
 %macro vwLPRsksube(st,sl);
-        %local I;
+    %local I;
   proc sql;
     %do I=&st %to &sl;
       create view master.vwLPRsksube&I as
@@ -67,3 +66,8 @@ $Id:  $
 	%end;
   quit;
 %mend;
+
+
+
+
+
