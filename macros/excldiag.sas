@@ -1,0 +1,15 @@
+%macro ExclDiag(lib,base,excl);
+    %local N nsets diag len;
+    %if %symexist(LPR&excl) %then %do;
+        data &lib..&base.ALL;
+            set &lib..&base.ALL;
+            %let nsets=%sysfunc(countw(&&LPR&excl));
+            %do N=1 %to &nsets;
+                %let diag=%lowcase(&scan(&&LPR&excl,&N));
+                %let len=%length(&diag);
+                if lowcase(substr(diagnose,1,&len))="&diag" then delete;
+                %end;
+            %runquit;
+            %end;
+        %else %put WARNING: Exclusion code group &excl is not defined;
+    %mend;
