@@ -1,10 +1,4 @@
-/* SVN header
-$Date: 2018-03-15 12:39:34 +0100 (to, 15 mar 2018) $
-$Revision: 93 $
-$Author: FCNI6683 $
-$Id: smoother.sas 93 2018-03-15 11:39:34Z FCNI6683 $
-*/
-/*
+/* 
   #+NAME          :  %smoother
   #+TYPE          :  SAS
   #+DESCRIPTION   :  Smoother indlæggelsesperioder
@@ -12,8 +6,8 @@ $Id: smoother.sas 93 2018-03-15 11:39:34Z FCNI6683 $
   #+OUTPUT        :  output datasætnavn
   #+AUTHOR        :  JNK/FLS
   #+CHANGELOG     :  Date        Initials Status
-                  :  10-09-15    JNK      ported from DS
-                  :
+                  :  10-09-15    JNK      ported from DS 
+                  :  
 */
 %macro smoother(outdata, indata, indate, outdate, basedata=, basedate=);
 data &outdata;
@@ -65,3 +59,4 @@ run;
 	run;
 %end;
 %mend;
+
