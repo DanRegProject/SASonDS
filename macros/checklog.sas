@@ -484,7 +484,7 @@
         2016-05-12  CAS     Added a process to add email headers when using commands
                             for the EMAILSYS option in Unix-like environments.
                             Tested with 'mail' and 'sendmail' commands.
-        2017-09-28  CAS     Added a new phrase regarding conversion based on user
+        2017-09-28  CAS     Added a new phrase regarding conversion based on user 
                             feedback. Thanks Benoit!
 
         YYYY-MM-DD  III     Please use this format and insert new entries above.
@@ -2064,13 +2064,14 @@
             %abort cancel;
         %end;
     %end;
-%if %sysfunc(exist(&out)) %then %do;
-    ods pdf file="&log_init/Log_issues.pdf";
-    title "Log issues found in &log_init";
-        proc print data=log_issues;
-        run;
-        ods pdf close;
-        %end;
+%if %sysfunc(exist(&OUT)) %then %do;
+ods pdf file="&log_init/Log_Issues.pdf";
+
+title "Log issues found in &log_init";
+proc print data=log_issues;
+run;
+ods pdf close;
+%end;
     /********************************************************************************
        END OF MACRO
      ********************************************************************************/
