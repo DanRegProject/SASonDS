@@ -1,4 +1,4 @@
-    /* dan behandlingsperioder ud fra foreningsm_ngden af periode - alts_  behandling uanset hvilket _gemiddel */
+    /* dan behandlingsperioder ud fra foreningsmÆngden af periode - altsÅ i behandling uanset hvilket lÆgemiddel */
 %macro jointrt(outdata,name,list,postfix,inlib=work,indatalist=);
     %local i val vset vstart vend;
     %let i=1;
@@ -37,30 +37,30 @@ data &outdata; set &outdata;
 %mend;
 
 
-%macro mergeperiods(basedata,perdata,indexdate,pervar,postfix=);
+%macro mergePeriods(basedata,perdata,indexdate,pervar,postfix=);
 %local per1 per2 per3;
-%let per1=%newdatasetname(per1tmp);
-%let per2=%newdatasetname(per2tmp);
-%let per3=%newdatasetname(per3tmp);
+%let per1=%NewDatasetName(per1tmp);
+%let per2=%NewDatasetName(per2tmp);
+%let per3=%NewDatasetName(per3tmp);
 proc sql;
 create table &per1 as select a.pnr, b.&indexdate,
-       a.&pervar.start as &pervar.stbe&indexdate&postfix label="startdate last &pervar period before &indexdate",
-        a.&pervar.end as &pervar.enbe&indexdate&postfix  label="enddate last &pervar period before &indexdate"
-	from &perdata a, &basedata b
-	where a.pnr=b.pnr and a.&pervar.end<&indexdate
-	order by a.pnr, b.&indexdate, a.&pervar.start ;
+       a.&pervar.start as &pervar.stbe&indexdate&postfix label="Startdate last &pervar period before &indexdate",
+        a.&pervar.end as &pervar.enbe&indexdate&postfix  label="Enddate last &pervar period before &indexdate"
+	   from &perdata a, &basedata b
+	   where a.pnr=b.pnr and a.&pervar.end<&indexdate
+	   order by a.pnr, b.&indexdate, a.&pervar.start ;
 create table &per2 as select a.pnr, b.&indexdate,
        a.&pervar.start as &pervar.stdu&indexdate&postfix label="Startdate current &pervar period covering &indexdate",
-        a.&pervar.end as &pervar.endu&indexdate&postfix  label="enddate current &pervar period covering &indexdate"
-	from &perdata a, &basedata b
-	where a.pnr=b.pnr and a.&pervar.start<=&indexdate and &indexdate<= a.&pervar.end
-	order by a.pnr, b.&indexdate, a.&pervar.start;
+        a.&pervar.end as &pervar.endu&indexdate&postfix  label="Enddate current &pervar period covering &indexdate"
+	   from &perdata a, &basedata b
+	   where a.pnr=b.pnr and a.&pervar.start<=&indexdate and &indexdate<= a.&pervar.end
+	   order by a.pnr, b.&indexdate, a.&pervar.start;
 create table &per3 as select a.pnr, b.&indexdate,
-       a.&pervar.start as &pervar.staf&indexdate&postfix label="startdate first &pervar period after &indexdate",
+       a.&pervar.start as &pervar.staf&indexdate&postfix label="Startdate first &pervar period after &indexdate",
         a.&pervar.end as &pervar.enaf&indexdate&postfix  label="Enddate first &pervar period after &indexdate"
-	from &perdata a, &basedata b
-	where a.pnr=b.pnr and a.&pervar.start>&indexdate
-	order by a.pnr, b.&indexdate, a.&pervar.start;
+	   from &perdata a, &basedata b
+	   where a.pnr=b.pnr and a.&pervar.start>&indexdate
+	   order by a.pnr, b.&indexdate, a.&pervar.start;
 %runquit;
 data &per1;
 set &per1;
@@ -82,7 +82,7 @@ by pnr &indexdate;
 %mend;
 
 /* beregn antal dage i behandling i en periode */
-%macro dayscov(basedata,perdata,outdata,outvar,indexdate,days,pervar,join=true);
+%macro DaysCov(basedata,perdata,outdata,outvar,indexdate,days,pervar,join=TRUE);
     proc sql;
 create table &outdata as
 select c.pnr, c.&indexdate, sum(c.days) as &outvar from
@@ -116,7 +116,7 @@ on a.pnr=b.pnr and (&pervar.start <=
 having days >.
 ) c
 group by c.pnr, c.&indexdate;
-%if &join=true %then %do;
+%if &join=TRUE %then %do;
     data &basedata;
         merge &basedata &outdata;
         by pnr &indexdate;
