@@ -10,7 +10,7 @@ $Id: getOPR.sas 309 2021-12-01 10:22:42Z wnm6683 $
     21.11.2016  JNK   Removed hospitalunit
 	18.09.2020	MJE	  Add table prefix
 */
-%macro GetOPR(outlib, oprlist, fromyear=1997, type=opr, pattype=0 1 2, oprart="" "V" "P" "D", basedata=,LPRdata=, basepop=, tilopr=FALSE /* tillægsdiagnose */, UAF=FALSE /* uafsluttede */ );
+%macro GetOPR(outlib, oprlist, fromyear=1997, type=opr, pattype=0 1 2, oprart="" "V" "P" "D", basedata=,LPRdata=, basepop=, tilopr=FALSE /* tillÃ¦gsdiagnose */, UAF=FALSE /* uafsluttede */ );
   %start_timer(getopr); /* measure time for this macro */
   %if %UPCASE(&type)=UBE and &fromyear<1999 %then %let fromyear=1999;
   %if %UPCASE(&type)=OPR and &fromyear<1997 %then %let fromyear=1997;
@@ -32,7 +32,8 @@ $Id: getOPR.sas 309 2021-12-01 10:22:42Z wnm6683 $
 	  /* tables are in work, and named &code and &code_uaf */
 	  %combineOPRTables(&outlib, &code);
 
-		proc datasets library=&outlib noprint;
+		proc datasets library=&outlib noprint nowarn;
+  			delete &type.&code.ALL;
 			change &code.ALL = &type.&code.ALL;
 		run;
 
@@ -77,7 +78,7 @@ $Id: getOPR.sas 309 2021-12-01 10:22:42Z wnm6683 $
                          V = vigtigste operation i afsluttet kontakt,
                          P = vigtigste operation i operativt indgreb,
                          D = deloperation. Anden/andre operationer i operativt indgreb.
-                         + = Tillægskode.
+                         + = TillÃ¦gskode.
       pattype=,        List of patient types (0 1 2 3). Separated with spaces.
       basedata=,       Input dataset with required population. Optional.
       fromyear=1977,   Constant. First year to look for diagnoses.
@@ -89,16 +90,16 @@ $Id: getOPR.sas 309 2021-12-01 10:22:42Z wnm6683 $
   #+OUTPUT
      pnr outcome opr oprart pattype hospital hospitalunit indate outdate oprdate
   #+AUTHOR
-    Flemming Skjøth
+    Flemming SkjÃ¸th
 */
 %MACRO findingOPR(outdata,outcome,opr,pattype=,oprart=, basedata=, fromyear=,LPRdata=, tilopr=,type=,uaf=);
   %local localoutdata dlstcnt startOPRtime yr I;
   %let dlstcnt = %sysfunc(countw(&opr));
-  /* print linie med aktuelt udtrækstidspunkt */
+  /* print linie med aktuelt udtrÃ¦kstidspunkt */
   %put start findingOPRcases: %qsysfunc(datetime(), datetime20.3);
   %let startOPRtime = %qsysfunc(datetime());
 
-  %let localoutdata=%NewDataSetName(localoutdatatemp); /* fortsæt arbejdet i work */
+  %let localoutdata=%NewDataSetName(localoutdatatemp); /* fortsÃ¦t arbejdet i work */
   proc sql inobs=&sqlmax;
     %do yr=&fromyear %to &lastLPR;
       %if &yr=&fromyear %then create table &localoutdata as ;
