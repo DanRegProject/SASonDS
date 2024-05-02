@@ -37,7 +37,7 @@ options fmtsearch=(fmt.times_personstatistik fmt.times_erhvervsstatistik fmt.tim
 		quit;
 	run;
 
-	proc sort data=&outlib..SOC&var.&index out =&outlib..SOC&var.&index ;
+	proc sort data=&outlib..SOC&var.&index out =&outlib..SOC&var.&index noduplicates;
 	by pnr &index;
 	run;
 
