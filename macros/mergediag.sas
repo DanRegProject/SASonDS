@@ -32,7 +32,7 @@ $Id: mergeDiag.sas 244 2020-09-24 07:40:47Z fflb6683 $
   #+OUTPUT
     Output dataset from %reducerFC is merged to basedata.
   #+AUTHOR
-    Flemming Skjøth
+    Flemming SkjÃ¸th
   #+CHANGELOG
   Date    Initials  Status
   21-01-13  FLS     Macro added
@@ -46,13 +46,13 @@ $Id: mergeDiag.sas 244 2020-09-24 07:40:47Z fflb6683 $
 
 */
 %MACRO mergeDiag(basedata,inlib,outlib,IndexDate,sets,subset=,postfix=,hosp=, ajour=today());
-  %put start mergeDiag: %qsysfunc(datetime(),datetime20.3), udtræksdato=&ajour;
+  %put start mergeDiag: %qsysfunc(datetime(),datetime20.3), udtrÃ¦ksdato=&ajour;
   %local I nsets var;
   %local lprdat;
-  %put start mergeLPR: %qsysfunc(datetime(), datetime20.3), udtræksdato = &ajour;
-  %let lprdat=%NewDatasetName(lprdattmp); /* fls 26-06-15 tilføjet temporært datasætnavn så data i work ikke overskrives */;
+  %put start mergeLPR: %qsysfunc(datetime(), datetime20.3), udtrÃ¦ksdato = &ajour;
+  %let lprdat=%NewDatasetName(lprdattmp); /* fls 26-06-15 tilfÃ¸jet temporÃ¦rt datasÃ¦tnavn sÃ¥ data i work ikke overskrives */;
   %local lprhosp;
-  %let lprhosp=%NewDatasetName(lprhosptmp); /* temporært datasætnavn så data i work ikke overskrives */
+  %let lprhosp=%NewDatasetName(lprhosptmp); /* temporÃ¦rt datasÃ¦tnavn sÃ¥ data i work ikke overskrives */
   %LET nsets=%sysfunc(countw(&sets));
   %if &nsets gt 2 %then %do; /* reduce list */
     %nonrep(mvar=sets, outvar=newsets);
@@ -69,13 +69,13 @@ $Id: mergeDiag.sas 244 2020-09-24 07:40:47Z fflb6683 $
       %IF %isBlank(%superq(subset))=0 %THEN and &subset;
       ;
     %RunQuit;
-    %if %isBlank(%superq(hosp))=0  %THEN %DO; /* dette sikrer at udskrivningsdato fremskrives til endelig udskrivning for indlæggelser; diagnose datoen (IndexDate) ændres ikke */
+    %if %isBlank(%superq(hosp))=0  %THEN %DO; /* dette sikrer at udskrivningsdato fremskrives til endelig udskrivning for indlÃ¦ggelser; diagnose datoen (IndexDate) Ã¦ndres ikke */
       proc sql;
         create table &lprhosp as
       	select a.*, b.hosp_in label="first day at hospital", b.hosp_out label="last day at hospital", b.hospdays label="number of days at hospital"/* jnk added for Mette */
         from &lprdat a left join &hosp b
         on a.pnr=b.pnr
-        where (a.indate<b.hosp_in or a.indate>b.hosp_out or b.hosp_out=.)
+       and (a.indate>=b.hosp_in and a.indate<=b.hosp_out)
         order by pnr, indate;
       %sqlQuit;
 	    data &lprdat;
