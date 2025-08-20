@@ -75,7 +75,7 @@ $Id: mergeDiag.sas 244 2020-09-24 07:40:47Z fflb6683 $
       	select a.*, b.hosp_in label="first day at hospital", b.hosp_out label="last day at hospital", b.hospdays label="number of days at hospital"/* jnk added for Mette */
         from &lprdat a left join &hosp b
         on a.pnr=b.pnr
-       and (a.indate>=b.hosp_in and a.indate<=b.hosp_out)
+       and (a.indate>=b.hosp_in and (a.indate<=b.hosp_out or b.hosp_out=.))
         order by pnr, indate;
       %sqlQuit;
 	    data &lprdat;
