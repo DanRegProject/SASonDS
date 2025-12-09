@@ -188,7 +188,7 @@
 %let OTHsegalN         = 3;
 
 
-/*Hospital Frailty Risk Score(HFRS)*/
+/*Hospital Frailty Risk Score(HFRS) PMID: 29706364 Gilbert et al (2018) Lancet */
 %let OTHLHFRS1       = "Intercept";
 %let OTHHFRS1W       = 0;
 %let OTHHFRS1C       = 1;
