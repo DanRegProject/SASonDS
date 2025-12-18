@@ -1,65 +1,118 @@
-/* SVN header
-$Date: 2019-11-05 13:59:52 +0100 (ti, 05 nov 2019) $
-$Revision: 208 $
-$Author: wnm6683 $
-$Id: getHOSP.sas 208 2019-11-05 12:59:52Z wnm6683 $
-*/
 /*
-  #+NAME
-    %getHOSP
-  #+TYPE
-    SAS
-  #+DESCRIPTION
-    The macro ''getHOSP'' finds periods of hospital admissions.
-    The macro ''%smoother'' smooths periods of admission, joining them if
-    there is 1 day or less between admissions.
-  #+SYNTAX
-    %findingHOSPperiods(
-      outdata,    Output data set name. Required.
-      basedata=,    Input dataset with required population. Required
-      pattype=0,    List of patient types (0 1 2 3). Separated with spaces.
-    )
-    %smoother(
-      outdata,  Output data set name. Required.
-      indata,   Data set to be smoothed. Required.
-      indate,   Variable containing start date for hospital admission period
-      outdate   Variable containing end date for admission period.
-    )
-  #+AUTHOR
-    Flemming Skjøth
-  #+CHANGELOG
-    Date       Initials  Status
-    22/3/13    AGR       Documentation added
-    05-12-2014 FLS       Recent added information on hospital
-                         and unit did not work properly due to
-                         shift in unit variable definition in 1996
-    31-07-2014  JNK      Changed to *_hist version and added ajour and keephist.
-    23-11-2016  JNK      Changed back to "not" hist (new master folder) and updated variables names (aar-> year etc)
+  getHosp();
+  the macro findingHOSPperiods finds periods of hospital admissions.
+  the macro smoother smoothes periods of admission, joining them if there is 1 day our less between admission.
 */
-%macro getHosp(outdata,basedata=, pattype=0, fromyear=1977);
-  /* print linie med tidspunkt for kald af makro og for udtræksdato */
-  %start_timer(getHOSP);
-  %put "local macro version";
-  %local localoutdata yr;
-  %let localoutdata = %NewDatasetName(localoutdatatmp); /* temporært datasæt så der arbejdes i work */
-  %put &basedata;
+
+%MACRO getHosp(outdata, basedata=,  fromyear=1977);
+  %LOCAL localoutdata yr dsn1;
+  /* log hastighed */
+  %PUT start getHosp: %qsysfunc(datetime(), datetime20.3);
+  %LET startHOSPtime = %qsysfunc(datetime());
+
+  %LET localoutdata=%NewDatasetName(localoutdatatmp); /* temporært datasætnavn så data i work */
+
+  %PUT &basedata;
+  %LET lastyrGH=%sysfunc(today(),year4.); /*local lastyr for getHosp*/
+  %DO %while (%sysfunc(exist(master.lpr_adm&lastyrGH))=0);
+      %LET lastyrGH=%eval(&lastyrGH - 1);
+  %END;
+  %DO %while (%sysfunc(exist(master.lpr_adm&fromyear))=0);
+      %LET fromyear=%eval(&fromyear + 1);
+  %END;
+
+  %LOCAL FIRST;
+  %LET FIRST=1;
   proc sql inobs=&sqlmax;
-  %do yr=&fromyear %to &lastLPR;
-    %if &yr=&fromyear %then create table &localoutdata as ;
-    %else insert into &localoutdata ;
-    select a.pnr, a.indate, (a.outdate-a.indate) as hospdays, a.outdate, a.year, a.hospital, a.adiag as diagnose,
-     a.rec_in, a.rec_out, a.DataValidUntil
-    from  Master.Lpr_ind&yr a
-    %if &basedata ne %then , &basedata b;
-    where
-    a.pattype in (%commas(&pattype)) /* jnk 29/7-2015: rettet "and" rækkefølge så det virker hver gang */
-    %if &basedata ne %then and a.pnr=b.pnr;
-    ;
-  %end;
-  quit;
-  proc sort data=&localoutdata out=&outdata;
-    by pnr indate outdate diagnose;
+    %DO yr=&fromyear %TO &lastyrGH;
+      %LET dsn1=master.lpr_adm&yr;      
+	  %LET dsn2=master.lpr_bes&yr;
+	  %IF &first=1 %THEN create table &localoutdata as;
+	  %ELSE insert into &localoutdata;
+	  %LET first=0;
+	  select
+              a.pnr,
+              a.start as indate label="indate",
+              a.slut as outdate label="outdate",
+              dhms(a.start,%IF %VAREXIST(&dsn1,indtime) %THEN  case a.indtime when . then 11 else a.indtime end ; %ELSE 11;,
+              %IF %VAREXIST(&dsn1,indminut) %THEN case a.indminut when . then 59 else a.indminut end ; %ELSE 59;,00) as starttime format=datetime.,
+              case a.slut when . then . else dhms(a.slut,11,59,00) end as endtime format=datetime.,
+              a.slut-a.start as hospdays,
+              year(a.start) as year label="year", 
+			%IF %SYSFUNC(exist(&dsn2)) %THEN
+			b.ambdto; %ELSE .; as ambdate,
+			a.prioritet as priority length=6 format=$6.,
+			a.pattype as patienttype,
+		    a.shak_sgh_ans as hospital length=30 format=$30. label="hospital",
+            a.shak_afd_ans as hospitalunit length=30 format=$30. label="hospitalunit",
+            a.adiag as diagnose length=10 format=$10. label="diagnose"
+          from
+             &dsn1 a
+              %IF %SYSFUNC(exist(dsn2)) %THEN 	
+				left join &dsn2 b
+				on a.kontakt_id=b.kontakt_id;
+			  %IF &basedata ne %THEN join &basedata c on a.pnr=c.pnr ;
+			  ;
+  %END;
+%LET dsn3=master.LPR_F_kontakter2022;
+%IF %sysfunc(exist(&dsn3))=1 %THEN %DO;
+   	  %IF &fromyear<2019 and %sysfunc(exist(&localoutdata))=1 %THEN insert into &localoutdata;
+          %ELSE create table &localoutdata as;
+	  select
+			a.pnr,
+			a.start as indate format=date.,
+			a.slut as outdate format=date.,
+			dhms(a.start,0,0,a.starttid) as starttime,
+			dhms(a.slut,0,0,a.sluttid) as endtime,
+			case a.slut when . then . else slut-start end as hospdays,
+			year(start) as year,
+			case when a.kontakttype="ALCA00" and
+			          a.prioritet="ATA3" and
+					  a.start=a.slut 
+			     then a.start else .
+				 end as ambdate,
+			a.prioritet as priority length=6 format=$6.,
+			"" as patienttype,
+			a.sorenhed_ans as hospital length=30 format=$30. label="hospital",
+			a.sorenhed_ans as hospitalunit length=30 format=$30. label="hospital",
+			a.adiag as diagnose length=10 format=$10. label="diagnose"
+			from
+              &dsn3  a
+              %IF &basedata ne %THEN join &basedata c
+               on a.pnr=c.pnr ;
+              where upcase(a.kontakttype) in ("ALCA00","ALCA10");
+        %END;
+  %SqlQuit;
+
+  data &localoutdata;
+	  set &localoutdata;
+	  if ambdate ne . then do;
+	  	indate=ambdate; outdate=ambdate; hospdays=0;
+	  	starttime=.; endtime=.;
+	  end;
+	keep pnr year indate outdate starttime endtime diagnose priority patienttype hospital hospitalunit;
   run;
+
+%IF %SYSFUNC(exist(master.depclass)) %THEN %DO;
+	proc sql;
+	create table &localoutdata as
+	select a.*, b.deptypetxt
+	from &localoutdata a left join master.depclass b
+	on a.hospital=b.hospital and strip(a.hospitalunit)=strip(b.hospitalunit) and 
+	a.year between b.startyear and b.endyear;
+	quit;
+%END;
+
+proc sort data=&localoutdata out=&outdata noduplicates;
+	by pnr indate outdate starttime;
+  run;
+
+
   %cleanup(&localoutdata);
-  %end_timer(getHOSP, text=execution time getHOSP);
-%mend;
+ data _null_;
+   endHOSPtime=datetime();
+   timeHOSPdif=endHOSPtime - &startHOSPtime;
+   put 'execution time GetHOSP ' timeHOSPdif:time20.6;
+ run;
+
+%MEND;
