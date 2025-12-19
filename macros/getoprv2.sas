@@ -4,7 +4,7 @@
   %let type=%UPCASE(&type);
   %if "&type"="UBE" and &fromyear<1999 %then %let fromyear=1999;
   %if "&type"="OPR" and &fromyear<1997 %then %let fromyear=1997;
-  %local N nofOPR name code nsource RC;
+  %local N nofOPR name code nsource RC lenstr;
 
   %let nsource = %sysfunc(countw(&SOURCE));
   %let nofOPR = %sysfunc(countw(&oprlist));
@@ -28,7 +28,26 @@
                 %let inline = &inline +&s*in&s;;
             %end;
       %end; /* end of do s= */
+
+	    proc sql noprint;
+        create table char_vars as select upcase(name) as name, max(length) as maxlength, min(length) as minlength
+            from dictionary.columns
+            where libname=upcase("&in") and index(memname,upcase("&type.&code.ALL"))>0 and upcase(type)="CHAR"
+            group by upcase(name)
+            having minlength<maxlength
+            order by name;
+
+    data _null_;
+        set char_vars end=eof;
+        by name;
+        length len_stmt $300;
+        retain len_stmt 'length';
+        if first.name;
+        len_stmt = catx(' ',len_stmt, strip(name), '$', strip(maxlength)) ;
+        if eof then call symput('lenstr',trim(len_stmt));
+    run;
     data &outlib..&type.&code.ALL;
+	&lenstr.;
           set &filelist;
 	  _in=0 &inline;
 	  source=lowcase(scan("&SOURCE",_in));
@@ -210,6 +229,7 @@
     put 'executiontime FindingOPR ' timeOPRdif:time20.6;
   run;
 %mend;
+
 
 
 
