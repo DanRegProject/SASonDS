@@ -3,17 +3,17 @@
 /*
 outlib:         output library
 diaglist:       diagnosis list, define diagnoses using %DefineIndicator()
-diagtype=:      diagnosetyper, tegn, med mellemrum (A, B, C, G, H og +) og nu med LPR3 koder også
+diagtype=:      diagnosetyper, tegn, med mellemrum (A, B, C, G, H og +) og nu med LPR3 koder ogsÃ¥
 ICD8=:          TRUE/FALSE include ICD8 codes
-indata=:      input datasæt med identer og evt fromdate= og todate= variable
+indata=:      input datasÃ¦t med identer og evt fromdate= og todate= variable
 fromyear=:      start later than 1977
-outdata=:       outputdatasæt med pnr, IDate, diagnose, outcome, source
+outdata=:       outputdatasÃ¦t med pnr, IDate, diagnose, outcome, source
 SOURCE=:        basic source of data
 fromdate=:      variable in basedata= restrict diagnoses from
 todate=:        variable in basedata= restrict diagnoses to
 */
 %macro getDiag(outlib, diaglist, diagtype=A B ALGA01 ALGA02, icd8=FALSE, indata=, fromyear=1977, outdata=, SOURCE=LPR PSYK PRIV LPR3, fromdate=, todate=);
-	%local N nsets diag nsource s stype filelist inline;
+	%local N nsets diag nsource s stype filelist inline lenstr;
 *	options mlogic symbolgen merror mprint;
 	%global FD_RC;
 
@@ -46,8 +46,25 @@ todate=:        variable in basedata= restrict diagnoses to
 			%end;
 		%end; /* end of inner do */
 		/* Combine all data from potential sources and include a source identifier in the final dataset */
+    proc sql noprint;
+        create table char_vars as select upcase(name) as name, max(length) as maxlength, min(length) as minlength
+            from dictionary.columns
+            where libname=upcase("&in") and index(memname,upcase("&diag.ALL"))>0 and upcase(type)="CHAR"
+            group by upcase(name)
+            having minlength<maxlength
+            order by name;
 
+    data _null_;
+        set char_vars end=eof;
+        by name;
+        length len_stmt $300;
+        retain len_stmt 'length';
+        if first.name;
+        len_stmt = catx(' ',len_stmt, strip(name), '$', strip(maxlength)) ;
+        if eof then call symput('lenstr',trim(len_stmt));
+    run;
 		data &outlib..LPR&diag.ALL;
+		&lenstr.;
 			set &filelist;
 			_in=0 &inline;
 			source=lowcase(scan("&SOURCE",_in));
@@ -88,8 +105,8 @@ outdata:    output datanavn
 outcome:    tekststreng outcome label, should be short
 icd:	      ICD koder version 8 eller 10, uden foranstillet D eller punktum,
 adskilles ved mellemrum.
-diagtype:   diagnosetyper, tegn, med mellemrum (A, B, C, G, H og +) og nu med LPR3 koder også
-indata:   input datasæt med identer og skæringsdato
+diagtype:   diagnosetyper, tegn, med mellemrum (A, B, C, G, H og +) og nu med LPR3 koder ogsÃ¥
+indata:   input datasÃ¦t med identer og skÃ¦ringsdato
 fromyear:   start later than 1977
 SOURCE:     basic source of data
 */
@@ -99,7 +116,7 @@ SOURCE:     basic source of data
 	%if "&icd" ne "" %then %let dlstcnt = %sysfunc(countw(&icd)); %else %let dlstcnt=0;;
 	%if "&diagtype" ne "" %then %let diagtype = %upcase(&diagtype);
 
-	%let localoutdata=%NewDatasetName(localoutdatatmp); /* temporært datasætnavn så data i work */
+	%let localoutdata=%NewDatasetName(localoutdatatmp); /* temporÃ¦rt datasÃ¦tnavn sÃ¥ data i work */
 
 	/* log eksekveringstid */
 	%put start findingDiag: %qsysfunc(datetime(), datetime20.3);
@@ -206,10 +223,10 @@ SOURCE:     basic source of data
                                                         UPCASE( b.diag) like  "D&dval.%"
                                                             %if %index("&diagtype",+)>0 %then
                                                             OR UPCASE( b.diag) like  "&dval.%";
-							%end; /* ICD-10, og evt med tillægskode uden D */
+							%end; /* ICD-10, og evt med tillÃ¦gskode uden D */
 							%else %do;
 								UPCASE(b.diag) like  "&dval.%"
-							%end; /* ICD-8 - ingen tillægskoder */
+							%end; /* ICD-8 - ingen tillÃ¦gskoder */
 						%end;
 						 )
 					 %end;
@@ -236,5 +253,6 @@ SOURCE:     basic source of data
 		put 'executiontime FindingDiag ' timeDiagdif:time20.6;
 	run;
 %mend;
+
 
 
