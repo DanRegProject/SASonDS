@@ -72,15 +72,15 @@
   oprart:     Operationsart, tegn, med mellemrum (D, P, V)
 
   pattype:    patienttyper, ciffer, adskildt med mellemrum (0, 1, 2 og 3)
-  indata:   input datasæt med identer og skæringsdato
-  fromyear:   startår
+  indata:   input datasÃ¦t med identer og skÃ¦ringsdato
+  fromyear:   startÃ¥r
 */
 
 %macro findingOpr(outdata, outcome, opr, oprart=, indata=, fromyear=, type=, SOURCE=LPR,returnCode=,fromdate=,todate=); /*Defined type to be operation per default - can use UBE*/
   %local localoutdata dlstcnt patcnt startOPRtime yr I first;
   %if &opr ne %then %let dlstcnt = %sysfunc(countw(&opr)); %else %let dlstcnt=0;;
   %let first = 1;
-  %let localoutdata=%NewDatasetName(localoutdatatmp); /* temporært datasætnavn så data i work */
+  %let localoutdata=%NewDatasetName(localoutdatatmp); /* temporÃ¦rt datasÃ¦tnavn sÃ¥ data i work */
   /* log eksekveringstid */
   %put start findingOpr: %qsysfunc(datetime(), datetime20.3);
   %let startOPRtime = %qsysfunc(datetime());
@@ -156,8 +156,10 @@
                     %if "&todate" ne "" %then c.&todate as todate format=date10.,;
                     b.*
                         from
-                        &dsn1 a inner join  &dsn2(rename=(kontakt_id=kontakt_id_b) b on
-                        (a.kontakt_id=b.kontakt_id_b)
+                        &dsn1 a inner join  &dsn2(rename=(kontakt_id=kontakt_id_b
+						%if  "&SOURCE"="LPR3" %then forloeb_id=forloeb_id_b; ) b on
+                        (a.kontakt_id=b.kontakt_id_b 
+						%if  "&SOURCE"="LPR3" %then and a.forloeb_id=b.forloeb_id_b;)
         %if &indata ne %then %do;
 			inner join &indata c on
 			a.pnr=c.pnr
@@ -188,7 +190,9 @@
  	%sqlquit;
 	data &outdata; set
 		%if &first=0 %then &outdata;
-            &localoutdata(drop=kontakt_id_b);
+            &localoutdata(drop=kontakt_id_b
+			%if  "&SOURCE"="LPR3" %then forloeb_id_b;
+			);
             outcome="&outcome";
 	run;
 	%let first = 0;
@@ -206,5 +210,6 @@
     put 'executiontime FindingOPR ' timeOPRdif:time20.6;
   run;
 %mend;
+
 
 
