@@ -1,4 +1,4 @@
-%MACRO merge(basedata=,inlib=work,outlib=work,IndexDate=,type=,datevar=,sets=,invar=,outvar=,subset==,postfix==);
+%MACRO merge(basedata=,inlib=work,outlib=work,IndexDate=,type=,datevar=,sets=,invar=,outvar=,subset=,postfix=);
   %PUT start merge: %qsysfunc(datetime(),datetime20.3);
   %local I nsets nvar outdat error;
   %LET error=0;
@@ -10,16 +10,16 @@
       %PUT merge ERROR: Only one type allowed;
       %LET error=1;
   %END;
-  %IF %sysfunc(find(&type,"DIAG MEDI OPR UBE PATO LAB CAR","i"))=0 %THEN %DO;
-      %PUT merge ERROR: type (&type) not one of : DIAG MEDI OPR UBE PATO LAB CAR;
+  %IF %sysfunc(find("LPR LMDB OPR UBE PATO LAB CAR",&type,i))=0 %THEN %DO;
+      %PUT merge ERROR: type (&type) not one of : LPR LMDB OPR UBE PATO LAB CAR;
       %LET error=1;
   %END;
-  %IF %sysfunc(countw(&invar)-countw(&outvar)) ne 0  %THEN %DO;
+  %IF %sysfunc(countw(&invar))-%sysfunc(countw(&outvar)) ne 0  %THEN %DO;
       %PUT merge ERROR: number of variables for input and output not equal.;
       %LET error=1;
   %END;
   %IF &error=0 %THEN %DO;
-          %LET outdat=%NewDatasetName(outdattmp); /* fls 26-06-15 tilføjet temporært datasætnavn så data i work ikke overskrives */;
+          %LET outdat=%NewDatasetName(outdattmp); /* fls 26-06-15 tilfÃ¸jet temporÃ¦rt datasÃ¦tnavn sÃ¥ data i work ikke overskrives */;
           %LET nsets=%sysfunc(countw(&sets));
           %LET nvar=%sysfunc(countw(&invar));
           %IF &nsets gt 2 %THEN %DO; /* reduce list */
@@ -85,15 +85,15 @@
     %LET nvar=%sysfunc(countw(&varlist));
 
     %DO I=1 %TO &nvar;
-        %LET var=%sysfunc(compress(%qscan(&sets,&i)));
+        %LET var=%sysfunc(compress(%qscan(&varlist,&i)));
         %IF %varexist(&temp,&var,type)=C %THEN %LET varcar = &varcar &var;
                                          %else %LET varnar = &varnar &var;
         %END;
     %IF &indexDate ne %THEN %LET nrep=3; %else nrep=1;
     %LET ncvar=%sysfunc(countw(&varcar));
     %LET nnvar=%sysfunc(countw(&varnar));
-    %LET nncvar=%sysfunc(&nrep*countw(&varcar));
-    %LET nnnvar=%sysfunc(&nrep*countw(&varnar));
+    %LET nncvar=&nrep*&ncvar;
+    %LET nnnvar=&nrep*&nnvar;
     data &outdata ;
       array varc{&ncvar,&nrep}  $
          %DO i=1 %TO &ncvar;
@@ -208,3 +208,4 @@
     run;
     %cleanup(&temp); /* ryd op i work */
   %mend;
+
