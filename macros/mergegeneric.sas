@@ -2,8 +2,8 @@
   %PUT start merge: %qsysfunc(datetime(),datetime20.3);
   %local I nsets nvar outdat error;
   %LET error=0;
-  %IF &basedata= or &inlib= or &outlib= or &type= or &datevar= or &sets= or &invar= or &outvar= %THEN %DO;
-      %PUT merge ERROR: Required arguments not specified, basedata, inlib, outlib, type, datevar, sets, invar, outvar;
+  %IF &basedata= or &inlib= or &outlib= or &type= or &datevar= or &sets= or &invar=  %THEN %DO;
+      %PUT merge ERROR: Required arguments not specified, basedata, inlib, outlib, type, datevar, sets, invar;
      %LET error=1;
       %END;
   %IF %sysfunc(countw(&type))>1 %THEN %DO;
@@ -222,5 +222,6 @@
     run;
     %cleanup(&temp); /* ryd op i work */
   %mend;
+
 
 
