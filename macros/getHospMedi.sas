@@ -34,7 +34,7 @@ $Id: getMedi.sas 241 2020-09-24 07:39:57Z fflb6683 $
             proc sql inobs=&sqlmax;
                 %if &N=1 %then create table &outlib..&outdata as ;
                 %else insert into &outlib..&outdata;
-                select pnr, ADM_date as IDate length=8, drug
+                select pnr, ADM as IDate length=8, drug
                     from &outlib..HMDB&medi.ALL;
                 %sqlquit;
        %end;
@@ -62,10 +62,10 @@ $Id: getMedi.sas 241 2020-09-24 07:39:57Z fflb6683 $
     The macro is called outside a datastep.
   #+SYNTAX
     %findingATCperiods(
-    outdata:       output datasætnavn
+    outdata:       output datasÃ¦tnavn
     drug:          string drug label, should be short
     atc:           ATC codes for drugs adskilles med mellemrum
-    indata:      input datasæt med identer og skæringsdato
+    indata:      input datasÃ¦t med identer og skÃ¦ringsdato
     leapdays:      days needed to achive a break in medication
     leapdaysratio: ratio of achieve a break in medication
     LMDBdata:      points to master.lmdb, can be changed to using a specific directory in work.
@@ -86,7 +86,7 @@ $Id: getMedi.sas 241 2020-09-24 07:39:57Z fflb6683 $
     is not the same as
   %findingATCperiods(dabi3,dabi,B01AE07);
   #+AUTHOR
-    Flemming Skjøth
+    Flemming SkjÃ¸th
 */
 %MACRO findingHMDB(outdata,drug,atc,indata=, fromyear=,HMDBdata=);
   %local I sqlrc yr dval dlstcnt;
@@ -94,7 +94,7 @@ $Id: getMedi.sas 241 2020-09-24 07:39:57Z fflb6683 $
   %put "extract based on population in &indata";
 
   /* log speed */
-  /* print linie med aktuelt udtrækstidspunkt */
+  /* print linie med aktuelt udtrÃ¦kstidspunkt */
   %put start findingHMDB: %qsysfunc(datetime(), datetime20.3);
   %let startMeditime = %qsysfunc(datetime());
   %let dlstcnt = %sysfunc(countw(&atc));
@@ -118,7 +118,7 @@ $Id: getMedi.sas 241 2020-09-24 07:39:57Z fflb6683 $
     %sqlquit;
 
     PROC SORT DATA=&outdata;
-      BY pnr drug adm_date;
+      BY pnr drug adm;
     RUN;
   data _null_;
       endMeditime=datetime();
@@ -126,3 +126,4 @@ $Id: getMedi.sas 241 2020-09-24 07:39:57Z fflb6683 $
       put 'execution time FindingHMDB ' timeMedidif:time20.6;
   run;
 %MEND;
+
