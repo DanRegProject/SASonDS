@@ -212,9 +212,8 @@ SOURCE:     basic source of data
                                             %end;
                                         %end;
 					where
-					YEAR(a.start) >=  &fromyear
 					%if &dlstcnt > 0 %then %do;
-						and (
+						(
 						%do Y=1 %to &dlstcnt;
 							%let dval = %UPCASE(%qscan(&icd,&Y));
 							%if &Y>1 %then OR ;
@@ -253,6 +252,7 @@ SOURCE:     basic source of data
 		put 'executiontime FindingDiag ' timeDiagdif:time20.6;
 	run;
 %mend;
+
 
 
 
