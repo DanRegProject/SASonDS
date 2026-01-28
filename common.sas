@@ -18,6 +18,10 @@ $Id: common.sas 310 2021-12-01 10:28:02Z wnm6683 $
 %let globalend = mdy(12,31,2099);
 %let YearInDays = 365.25;
 
+%LET LPR3grp=LPR_A;
+%LET LPR3adm=KONTAKT; /* KONTAKTER under LPR_F */
+%LET LPR3diag=DIAGNOSE; /* DIAGNOSER under LPR_F */
+
 libname master   "D:\data\Workdata\&ProjectNumber/data/SAS/Master"              access=readonly ;
 libname charlib  "D:\data\Workdata\&ProjectNumber/data/SAS/Master"              access=readonly ;
 libname risklib  "D:\data\Workdata\&ProjectNumber/data/SAS/RISKData2"           access=readonly ;
