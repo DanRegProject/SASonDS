@@ -49,11 +49,11 @@ todate=:        variable in basedata= restrict diagnoses to
     proc sql noprint;
         create table char_vars as select upcase(name) as name, max(length) as maxlength, min(length) as minlength
             from dictionary.columns
-            where libname=upcase("&in") and index(memname,upcase("&diag.ALL"))>0 and upcase(type)="CHAR"
+            where libname=upcase("WORK") and prxmatch("/^%UPCASE(&diag.all)([^A-Za-z]|$)/",memname)>0 and upcase(type)="CHAR"
             group by upcase(name)
             having minlength<maxlength
-            order by name;
-
+            order by upcase(name);
+   %let lenstr=;
     data _null_;
         set char_vars end=eof;
         by name;
@@ -123,94 +123,74 @@ SOURCE:     basic source of data
 	%let startDiagtime = %qsysfunc(datetime());
 	/* find last available dataset */
 	%let lastyrGH=%sysfunc(today(),year4.);
-        %let SOURCE = %UPCASE(&SOURCE);
-	%if "&SOURCE"="PSYK" %then %do;
-		%let fromyear=2019;
-		%let lastyrGH=2019;
-		%let tablegrp=psyk;
-	%end;
-	%if "&SOURCE"="PRIV" %then %do;
-		%if &fromyear<2002 %then %let fromyear=2002;
-		%let tablegrp=priv;
-		%let lastyrGH=2019;
-	%end;
-	%if "&SOURCE"="LPR" %then %let tablegrp=lpr;
-
+	%let SOURCE = %UPCASE(&SOURCE);
+	%LET tablegrp=&SOURCE;
+	%LET dsn1=ADM;
+	%LET dsn2=DIAG;
 	%if "&SOURCE"="LPR3" %then %do;
-		%let lastyrGH=%sysfunc(date(),year4);
-		%let tablegrp=&LPR3grp;/* NB assume at LPR3 always has a year label on file */
-		%do %while (%sysfunc(exist(master.&tablegrp._kontakter&lastyrGH))=0 and &lastyrGH>2018);
-			%let lastyrGH=%eval(&lastyrGH - 1);
-		%end;
-		%let fromyear=&lastyrGH;
+		%LET dsn1=%UPCASE(&LPR3ADM);
+		%LET dsn2=%UPCASE(&LPR3DIAG);
+		%LET tablegrp=%UPCASE(&LPR3grp);/* NB assume at LPR3 always has a year label on file */
 	%end;
 
-	%if &fromyear ne 0 and &lastyrGH ne 0 and  "&SOURCE" ne "LPR3" %then %do;
-		%do %while (%sysfunc(exist(master.&tablegrp._adm&fromyear))=0 and &lastyrGH>&fromyear);
-			%let fromyear=%eval(&fromyear + 1);
-		%end;
-		%do %while (%sysfunc(exist(master.&tablegrp._adm&lastyrGH))=0 and &lastyrGH>&fromyear);
-			%let lastyrGH=%eval(&lastyrGH - 1);
-		%end;
+	%if &fromdate ne %then %do;
+		%LET fromdate=c.&fromdate;
+		%IF &todate ne %THEN %LET todate=c.&todate; %ELSE %LET todate=c.&fromdate;
 	%end;
-	%let FD_RC=0;
+	%if &fromyear ne and &fromdate eq %THEN %DO;
+		%LET fromdate=mdy(1,1,&fromyear);
+		%LET todate=today();
+	%end;
+	%LET adm_names=;
+	%LET diag_names=;
 
-	%if "&SOURCE"="LPR" %then %do;
-		%if %sysfunc(exist(master.&tablegrp._adm&lastyrGH))=0 %then %do;
-			%put WARNING getDiag: LPR data not available.;
-			%let FD_RC=1;
-		%end;
-	%end;
-	%if "&SOURCE"="PSYK" and %sysfunc(exist(master.&tablegrp._adm&lastyrGH))=0 %then %do;
-		%put WARNING getDiag: LPR-PSYK data not available.;
-		%let FD_RC=1;
-	%end;
-	%if "&SOURCE"="PRIV" %then %do;
-		%if %sysfunc(exist(master.&tablegrp._adm&lastyrGH))=0 %then %do;
-			%put WARNING getDiag: LPR-PRIV data not available.;
-			%let FD_RC=1;
-		%end;
-	%end;
+	proc sql noprint;
+        select memname into :adm_names separated by ' '
+            from dictionary.tables
+            where libname=upcase("MASTER") and prxmatch("/^&tablegrp._&dsn1.([^A-Za-z]|$)/",upcase(memname))>0 and 
+			(upcase(memtype)="DATA" or upcase(memtype)="VIEW")
+			order by memname;
+   	proc sql noprint;
+        select memname into :diag_names separated by ' '
+            from dictionary.tables
+            where libname=upcase("MASTER") and prxmatch("/^&tablegrp._&dsn2.([^A-Za-z]|$)/",upcase(memname))>0 and 
+			(upcase(memtype)="DATA" or upcase(memtype)="VIEW")
+			order by memname;
 
-	%if "&SOURCE"="LPR3" %then %do;
-		%if %sysfunc(exist(master.&tablegrp._kontakter&lastyrGH))=0 and %sysfunc(exist(master.&tablegrp._diagnoser&lastyrGH))=0 %then %do;
-			%put WARNING getDiag: LPR3 data not available.;
-			%let FD_RC=1;
-		%end;
-	%end;
-    %if &FD_RC=0 %then %do;
+	%LET i=1;
+	
+	%do %WHILE (%SCAN(&adm_names,&i) ne);
+    	%let FD_RC=0;
+		%LET DSN1=%SCAN(&adm_names,&i);		
+		%LET DSN2=%SCAN(&diag_names,&i);
+		%LET rename=;
+		proc sql noprint;
+		select trim(a.name)||'='||trim(a.name)||'_b' into :rename separated by ' ' from 
+			(select name
+			from dictionary.columns
+			where upcase(libname)="MASTER" and memname="&dsn1") a,
+			(select name
+			from dictionary.columns
+			where upcase(libname)="MASTER" and memname="&dsn2") b
+			where a.name=b.name
+			;
+			%let rename=%sysfunc(tranwrd(&repname," _","_"));
 
-		%if "&SOURCE" eq "LPR3" %then %let loopend=&fromyear; %else %let loopend=&lastyrGH;;
-		%do yr=&fromyear %to &loopend;
-                   %if "&SOURCE" eq "LPRPSYK" %then %do;
-                        %let dsn1= master.&tablegrp._ADM&yr;
-                        %let dsn2= master.&tablegrp._DIAG&yr;
-                    %end;
-                    %else %if "&SOURCE" eq "LPR3" %then %do;
-                        %let dsn1=  master.&tablegrp._kontakter&lastyrGH;
-                        %let dsn2=  master.&tablegrp._diagnoser&lastyrGH;
-                    %END;
-                    %else %do;
-                            %let dsn1= master.&tablegrp._adm&yr;
-                            %let dsn2= master.&tablegrp._diag&yr;
-                    %end;
 			proc sql inobs=&sqlmax;
-                            %if %sysfunc(exist(&dsn1)) and %sysfunc(exist(&dsn2)) %then %do;
-                                create table &localoutdata as
-                                    select distinct
-                                    a.*,
-                                    %if "&fromdate" ne "" %then c.&fromdate as fromdate format=date10.,;
-                                    %if "&todate" ne "" %then c.&todate as todate format=date10.,;
-                                    b.*
-                                        from &dsn1 a inner join &dsn2(rename=(kontakt_id=kontakt_id_b)) b on
-                                        (a.kontakt_id=b.KONTAKT_ID_b)
-                                        %if &indata ne %then %do;
-                                        inner join &indata c on a.pnr=c.pnr
-                                            %if "&fromdate" ne "" %then %do;
-                                            and a.start between c.&fromdate and %if "&todate" ne "" %then c.&todate;
-                                            %else c.&fromdate;
-                                            %end;
-                                        %end;
+				create table &localoutdata as
+					select distinct
+					a.*,
+					%if "&fromdate" ne "" %then &fromdate as fromdate format=date10.,;
+					%if "&todate" ne "" %then &todate as todate format=date10.,;
+					b.*
+						from MASTER.&dsn1 a inner join MASTER.&dsn2(rename=(&rename)) b on
+						(a.kontakt_id=b.KONTAKT_ID_b)
+						%if &indata ne %then %do;
+						inner join &indata c on a.pnr=c.pnr
+							%if "&fromdate" ne "" %then %do;
+							and a.start between &fromdate and &todate;
+							%end;
+						%end;
 					where
 					%if &dlstcnt > 0 %then %do;
 						(
@@ -232,26 +212,24 @@ SOURCE:     basic source of data
 					%if "&diagtype" ne "" %then %do;    and
 						upcase(b.DIAGTYPE) in (%quotelst(&diagtype,delim=%str(, )))
 					%end;
-			%end;
 			;
 			/*%SqlQuit;*/
 			data &outdata;
                             set %if &yr ne &fromyear %then &outdata; &localoutdata(drop=kontakt_id_b);
                             outcome="&outcome";
 			run;
-
+			%LET i=%eval(&i+1);
 		%end;
 
 
-		%cleanup(&localoutdata);
-
-%end;
+	%cleanup(&localoutdata);
 	data _null_;
 		endDiagtime = datetime();
 		timeDiagdif=endDiagtime-&startDiagtime;
 		put 'executiontime FindingDiag ' timeDiagdif:time20.6;
 	run;
 %mend;
+
 
 
 
