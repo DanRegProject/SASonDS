@@ -146,13 +146,13 @@ SOURCE:     basic source of data
 	proc sql noprint;
         select memname into :adm_names separated by ' '
             from dictionary.tables
-            where libname=upcase("MASTER") and prxmatch("/^&tablegrp._&dsn1.([^A-Za-z]|$)/",upcase(memname))>0 and 
+            where upcase(libname)="MASTER" and prxmatch("/^&tablegrp._&dsn1.([^A-Za-z]|$)/",upcase(memname))>0 and 
 			(upcase(memtype)="DATA" or upcase(memtype)="VIEW")
 			order by memname;
    	proc sql noprint;
         select memname into :diag_names separated by ' '
             from dictionary.tables
-            where libname=upcase("MASTER") and prxmatch("/^&tablegrp._&dsn2.([^A-Za-z]|$)/",upcase(memname))>0 and 
+            where upcase(libname)="MASTER" and prxmatch("/^&tablegrp._&dsn2.([^A-Za-z]|$)/",upcase(memname))>0 and 
 			(upcase(memtype)="DATA" or upcase(memtype)="VIEW")
 			order by memname;
 
@@ -228,6 +228,7 @@ SOURCE:     basic source of data
 		put 'executiontime FindingDiag ' timeDiagdif:time20.6;
 	run;
 %mend;
+
 
 
 
