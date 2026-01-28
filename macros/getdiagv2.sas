@@ -121,8 +121,7 @@ SOURCE:     basic source of data
 	/* log eksekveringstid */
 	%put start findingDiag: %qsysfunc(datetime(), datetime20.3);
 	%let startDiagtime = %qsysfunc(datetime());
-	/* find last available dataset */
-	%let lastyrGH=%sysfunc(today(),year4.);
+	
 	%let SOURCE = %UPCASE(&SOURCE);
 	%LET tablegrp=&SOURCE;
 	%LET dsn1=ADM;
@@ -229,6 +228,7 @@ SOURCE:     basic source of data
 		put 'executiontime FindingDiag ' timeDiagdif:time20.6;
 	run;
 %mend;
+
 
 
 
