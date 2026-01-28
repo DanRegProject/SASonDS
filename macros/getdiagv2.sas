@@ -52,7 +52,7 @@ todate=:        variable in basedata= restrict diagnoses to
             where libname=upcase("WORK") and prxmatch("/^%UPCASE(&diag.all)([^A-Za-z]|$)/",memname)>0 and upcase(type)="CHAR"
             group by upcase(name)
             having minlength<maxlength
-            order by upcase(name);
+            order by name;
    %let lenstr=;
     data _null_;
         set char_vars end=eof;
@@ -229,6 +229,7 @@ SOURCE:     basic source of data
 		put 'executiontime FindingDiag ' timeDiagdif:time20.6;
 	run;
 %mend;
+
 
 
 
