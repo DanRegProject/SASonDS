@@ -12,10 +12,12 @@ SOURCE=:        basic source of data
 fromdate=:      variable in basedata= restrict diagnoses from
 todate=:        variable in basedata= restrict diagnoses to
 */
-%macro getDiag(outlib, diaglist, diagtype=A B ALGA01 ALGA02, icd8=FALSE, indata=, fromyear=1977, outdata=, SOURCE=LPR PSYK PRIV LPR3, fromdate=, todate=);
+%macro getDiag(outlib, diaglist, diagtype=A B ALGA01 ALGA02, icd8=FALSE, indata=, fromyear=1977, outdata=, 
+			SOURCE=LPR PSYK PRIV LPR3, fromdate=, todate=,
+			admvar=start slut prioritet, diagvar=diag diagtype);
 	%local N nsets diag nsource s stype filelist inline lenstr;
 *	options mlogic symbolgen merror mprint;
-	%global FD_RC;
+	%global FD_RC firstrun lastrun;
 
     %start_timer(getdiag); /* measure time for this macro */
 
@@ -27,24 +29,29 @@ todate=:        variable in basedata= restrict diagnoses to
 		%let nsets = %sysfunc(countw(&newdiaglist));
 		%let diaglist = &newdiaglist;
 	%end;
-
+	%let firstrun=1;
+	%let lastrun=0;
 	%do N=1 %to &nsets; /* start of outer do */
 		%let diag = %lowcase(%scan(&diaglist,&N));
 		%if %symexist(LPR&diag) %then %do;
 		%let filelist=;
+		%let filelist2=;
 		%let inline=;
+		%IF &N=&nsets %THEN %LET lastrun=1;
 		%do s=1 %to &nsource; /* start of inner do */
 			%let stype = %lowcase(%scan(&SOURCE,&s));
 			%let FD_RC=;
 			%findingDiag(&diag.ALL&s, &diag,
 				%if &ICD8=TRUE and %symexist(LPR&diag._ICD8) %then &&LPR&diag._ICD8; &&LPR&diag,
 				diagtype=&diagtype, indata=&indata, fromyear=&fromyear,
-				SOURCE=&stype, fromdate=&fromdate, todate=&todate);
+				SOURCE=&stype, fromdate=&fromdate, todate=&todate, admvar=&admvar, diagvar=&diagvar);
 			%if &FD_RC=0 %then %do;
 				%let filelist= &filelist &diag.ALL&s(in=in&s) ;;
+				%let filelist2= &filelist2 &diag.ALL&s ;;
 				%let inline = &inline +&s*in&s;;
 			%end;
 		%end; /* end of inner do */
+		%let firstrun=0;
 		/* Combine all data from potential sources and include a source identifier in the final dataset */
     proc sql noprint;
         create table char_vars as select upcase(name) as name, max(length) as maxlength, min(length) as minlength
@@ -71,10 +78,11 @@ todate=:        variable in basedata= restrict diagnoses to
 
 			drop _in;
         %runquit;
+		%cleanup(char_vars &filelist2);
 		proc sort data=&outlib..LPR&diag.ALL;
 	    by pnr %testvar(&outlib..LPR&diag.ALL,,start,nocomma=TRUE,outvar=FALSE)
-	           %testvar(&outlib..LPR&diag.ALL,,tidspunkt_start,nocomma=TRUE,outvar=FALSE)
-	           %testvar(&outlib..LPR&diag.ALL,,tidspunkt_slut,nocomma=TRUE,outvar=FALSE)
+	           %testvar(&outlib..LPR&diag.ALL,,starttid,nocomma=TRUE,outvar=FALSE)
+	           %testvar(&outlib..LPR&diag.ALL,,sluttid,nocomma=TRUE,outvar=FALSE)
 			 diag;
 		%RunQuit;
 
@@ -111,8 +119,8 @@ fromyear:   start later than 1977
 SOURCE:     basic source of data
 */
 
-%macro findingDiag(outdata, outcome, icd, diagtype=, indata=, fromyear=, SOURCE=LPR, fromdate=, todate=);
-	%local localoutdata yr I dval dsn1 dsn2 dsn3 M tablegrp dlstcnt startdiagtime lastyrGH ;
+%macro findingDiag(outdata, outcome, icd, diagtype=, indata=, fromyear=, SOURCE=LPR, fromdate=, todate=, admvar=, diagvar=);
+	%local localoutdata yr I dval dsn1 dsn2 dsn3 M tablegrp dlstcnt startdiagtime lastyrGH diagtype diag;
 	%if "&icd" ne "" %then %let dlstcnt = %sysfunc(countw(&icd)); %else %let dlstcnt=0;;
 	%if "&diagtype" ne "" %then %let diagtype = %upcase(&diagtype);
 
@@ -155,41 +163,73 @@ SOURCE:     basic source of data
             where upcase(libname)="MASTER" and prxmatch("/^&tablegrp._&dsn2.([^A-Za-z]|$)/",upcase(memname))>0 and 
 			(upcase(memtype)="DATA" or upcase(memtype)="VIEW")
 			order by memname;
-
+	%IF &admvar ne %THEN %DO;
+		%let admvar = %UPCASE(pnr kontakt_id start &admvar);
+	%END;
+	%IF &diagvar ne %THEN %DO;
+		%let diagvar = %UPCASE(kontakt_id diag diagtype &diagvar);
+	%END;
 	%LET i=1;
 	
 	%do %WHILE (%SCAN(&adm_names,&i) ne);
     	%let FD_RC=0;
-		%LET DSN1=%SCAN(&adm_names,&i);		
-		%LET DSN2=%SCAN(&diag_names,&i);
+		%LET locDSN2=%SYSFUNC(tranwrd(%SCAN(&adm_names,&i),&dsn1,&dsn2));
+		%LET locDSN1=%SCAN(&adm_names,&i);		
 		%LET rename=;
-		proc sql noprint;
-		select trim(a.name)||'='||trim(a.name)||'_b' into :rename separated by ' ' from 
-			(select name
-			from dictionary.columns
-			where upcase(libname)="MASTER" and memname="&dsn1") a,
-			(select name
-			from dictionary.columns
-			where upcase(libname)="MASTER" and memname="&dsn2") b
-			where a.name=b.name
-			;
-			%let rename=%sysfunc(tranwrd(&repname," _","_"));
+		%IF &firstrun=1 %THEN %DO;
+			/* copy data to work and prepare for join avoiing problems with variables name the same in both datasets */
+			%LET rename=;
+			proc sql noprint;
+			select trim(a.name)||'='||trim(a.name)||'_b' into :rename separated by ' ' from 
+				(select distinct upcase(name) as name
+				from dictionary.columns
+				where upcase(libname)="MASTER" and memname="&locdsn1"
+				%IF &admvar ne %THEN and upcase(name) in (%quotelst(&admvar, delim=%str(, ))); ) a,
+				(select distinct upcase(name) as name
+				from dictionary.columns
+				where upcase(libname)="MASTER" and memname="&locdsn2") 				
+				IF &diagvar ne %THEN and upcase(name) in (%quotelst(&diagvar, delim=%str(, ))); ) b
+				where a.name=b.name
+				;
+			select distinct upcase(name) as name into :locadmvar separated by ', '
+				from dictionary.columns
+				where upcase(libname)="MASTER" and memname="&locdsn1"
+				%IF &admvar ne %THEN and upcase(name) in (%quotelst(&admvar, delim=%str(, ))); 
+			select distinct upcase(name) as name into :locdiagvar separated by ', '
+				from dictionary.columns
+				where upcase(libname)="MASTER" and memname="&locdsn2") 				
+				IF &diagvar ne %THEN and upcase(name) in (%quotelst(&diagvar, delim=%str(, ))); 
+			quit;
+				%let rename=%sysfunc(tranwrd(&repname," _","_"));
 
-			proc sql inobs=&sqlmax;
+			proc sql noprint inobs=&sqlmax;
+				create table work.&locdsn1                   as select &locadmvar from MASTER.&locdsn1;
+				create table work.&locdsn2(rename=(&rename)) as select &locdiagvar from MASTER.&locdsn2;
+				%if &indata ne or "&fromdate" ne "" %then %do;
+					create table work.&locdsn1 as select a.*
+					%if "&fromdate" ne "" %then , &fromdate as fromdate format=date10.;
+					%if "&todate" ne "" %then , &todate as todate format=date10.,;
+					from 
+					work.&locdsn1 a where
+					%if &indata ne %then %do;
+						pnr in (select distinct pnr from &indata)
+					%end;
+					%if "&fromdate" ne %THEN %DO;
+						%if &indata ne %then and; a.start between &fromdate and &todate
+					%END;
+					;
+					create table work.&locdsn2 as select b.*
+						from work.&locdsn2 b where kontakt_id_b in (select kontakt_id from work.&locdsn1);
+					quit;
+				%END;
+			%END /* firstrun */
+		proc sql inobs=&sqlmax;
 				create table &localoutdata as
 					select distinct
 					a.*,
-					%if "&fromdate" ne "" %then &fromdate as fromdate format=date10.,;
-					%if "&todate" ne "" %then &todate as todate format=date10.,;
 					b.*
-						from MASTER.&dsn1 a inner join MASTER.&dsn2(rename=(&rename)) b on
+					from WORK.&locdsn1 a inner join WORK.&locdsn2 b on
 						(a.kontakt_id=b.KONTAKT_ID_b)
-						%if &indata ne %then %do;
-						inner join &indata c on a.pnr=c.pnr
-							%if "&fromdate" ne "" %then %do;
-							and a.start between &fromdate and &todate;
-							%end;
-						%end;
 					where
 					%if &dlstcnt > 0 %then %do;
 						(
@@ -214,20 +254,25 @@ SOURCE:     basic source of data
 			;
 			/*%SqlQuit;*/
 			data &outdata;
-                            set %if &yr ne &fromyear %then &outdata; &localoutdata(drop=kontakt_id_b);
-                            outcome="&outcome";
+                set %if &i>1 %then &outdata; &localoutdata(drop=kontakt_id_b);
+                outcome="&outcome";
 			run;
-			%LET i=%eval(&i+1);
 		%end;
+			%LET i=%eval(&i+1);
 
 
 	%cleanup(&localoutdata);
+	%if &lastrun=1 %THEN %DO;
+		%cleanup(&locdsn1);
+		%cleanup(&locdsn2);
+	%END;
 	data _null_;
 		endDiagtime = datetime();
 		timeDiagdif=endDiagtime-&startDiagtime;
 		put 'executiontime FindingDiag ' timeDiagdif:time20.6;
 	run;
 %mend;
+
 
 
 
