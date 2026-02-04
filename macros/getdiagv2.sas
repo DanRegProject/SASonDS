@@ -208,7 +208,7 @@ SOURCE:     basic source of data
 				%if &indata ne or "&fromdate" ne "" %then %do;
 					create table work.&locdsn1 as select a.*
 					%if "&fromdate" ne "" %then , &fromdate as fromdate format=date10.;
-					%if "&todate" ne "" %then , &todate as todate format=date10.,;
+					%if "&todate" ne "" %then , &todate as todate format=date10.;
 					from 
 					work.&locdsn1 a where
 					%if &indata ne %then %do;
@@ -272,6 +272,7 @@ SOURCE:     basic source of data
 		put 'executiontime FindingDiag ' timeDiagdif:time20.6;
 	run;
 %mend;
+
 
 
 
