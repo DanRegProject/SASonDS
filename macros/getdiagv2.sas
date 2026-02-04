@@ -214,7 +214,7 @@ SOURCE:     basic source of data
 					%if &indata ne %then %do;
 						pnr in (select distinct pnr from &indata)
 					%end;
-					%if "&fromdate" ne %THEN %DO;
+					%if "&fromdate" ne "" %THEN %DO;
 						%if &indata ne %then and; a.start between &fromdate and &todate
 					%END;
 					;
@@ -272,6 +272,7 @@ SOURCE:     basic source of data
 		put 'executiontime FindingDiag ' timeDiagdif:time20.6;
 	run;
 %mend;
+
 
 
 
