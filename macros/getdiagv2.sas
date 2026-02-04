@@ -257,8 +257,8 @@ SOURCE:     basic source of data
                 set %if &i>1 %then &outdata; &localoutdata(drop=kontakt_id_b);
                 outcome="&outcome";
 			run;
-		%end;
 			%LET i=%eval(&i+1);
+		%end;
 
 
 	%cleanup(&localoutdata);
@@ -272,6 +272,7 @@ SOURCE:     basic source of data
 		put 'executiontime FindingDiag ' timeDiagdif:time20.6;
 	run;
 %mend;
+
 
 
 
