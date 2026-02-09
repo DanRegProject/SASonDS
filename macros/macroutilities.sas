@@ -67,8 +67,8 @@ $Id: macroUtilities.sas 208 2019-11-05 12:59:52Z wnm6683 $
         %end;
     &newdatasetname
     %mend;
-%macro cleanup(sets);
-    proc datasets nolist;
+%macro cleanup(sets,lib=work);
+    proc datasets nolist lib=&lib;
         delete &sets;
     run;
     quit;
