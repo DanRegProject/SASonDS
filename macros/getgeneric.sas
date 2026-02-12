@@ -143,7 +143,6 @@ proc sort data=&outlib..&type.&code.ALL;
 %let startgettime = %sysfunc(datetime());
 %let tablegrp=;
 %let source=%UPCASE(&SOURCE);
-%let type=%UPCASE(&type);
 %if %sysfunc(find("DIAG OPR UBE",&type,i))>0 %THEN %let tablegrp = &SOURCE._;
 
 %let DSN1=%UPCASE(&&&SOURCE.prim);
@@ -237,18 +236,12 @@ proc sql noprint inobs=&sqlmax;
 %if &dsn3 ne %then create table work.&locdsn3(rename=(&rename2)) as select &locgetvar3 from master.&locdsn3;;
 
    %IF &indata ne or "&fromdate" ne "" %then %do;
-      create table work.&locdsn1 as select a.*
-      from
-         work.&locdsn1 a where
-         %if &indata ne %then %do;
-            pnr in (select distinct pnr from &indata)
-         %end;
+      delete from work.&locdsn1  where
+            pnr not in (select distinct pnr from &indata)
          ;
-      %if &dsn2 ne %then create table work.&locdsn2 as select b.*
-         from work.&locdsn2 b where &&&type.stdgetkeyvar._b in (select &&&type.stdgetkeyvar
+      %if &dsn2 ne %then delete from work.&locdsn2  where &&&type.stdgetkeyvar._b not in (select &&&type.stdgetkeyvar
          from work.&locdsn1);;
-      %if &dsn3 ne %then create table work.&locdsn3 as select b.*
-         from work.&locdsn3 b where &&&type.stdgetkeyvar._c in (select &&&type.stdgetkeyvar
+      %if &dsn3 ne %then delete from work.&locdsn3  where &&&type.stdgetkeyvar._c not in (select &&&type.stdgetkeyvar
          from work.&locdsn1);;
    %end;
 quit;
@@ -289,17 +282,20 @@ proc sql inobs=&sqlmax;
    ;
 
 quit;
-
+%if &sqlrc=0 or &i=1 %then %do;
 data &outdata;
-   set
+%if &sqlrc=0 or &i>1 %then %do;   set
       %if &i>1 %then &outdata;
-      &localoutdata(drop=
+      %if &sqlrc=0 %then %do; &localoutdata(drop=
          %if &dsn2 ne %then &&&type.stdgetkeyvar._b;
          %if &dsn3 ne %then &&&type.stdgetkeyvar._c;
       );
+      %end;
+      ;
+      %end;
    &type.outcome="&outcome";
 run;
-
+%end;
 %end;
 %let I=%eval(&I+1);
 %if &lastrun=1 %THEN %DO;
