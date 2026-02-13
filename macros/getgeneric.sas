@@ -227,7 +227,7 @@ proc sql noprint;
       where upcase(libname)="MASTER" and memname="&locdsn3"
       %IF &getvar ne %THEN and upcase(name) in (%quotelist(&getvar, delim=%str(, )));
 
-%runquit;
+quit;
 
 %let rename=%sysfunc(tranwrd(&rename,"_","_"));
 %let rename2=%sysfunc(tranwrd(&rename2,"_","_"));
