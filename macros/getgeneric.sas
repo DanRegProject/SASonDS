@@ -51,7 +51,7 @@
             %let stype = %lowcase(%scan(&SOURCE,&s));
             %let RC=;
 
-          %if &type=&source %then %let ftype=pri; %else %let ftype=&type;
+          %if &type=&source %then %let ftype=prim; %else %let ftype=&type;
           %put >Search for &type.&code in &stype.&ftype: &&&stype.&ftype <;
           %if %symexist(&stype.&ftype) %then %do;
            %findrows(outdata=&type.&code.ALL&s, outcome=&code, code=&&type&code, indata=&indata,
