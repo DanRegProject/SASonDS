@@ -48,15 +48,17 @@
 
          %IF &N=&nsets %THEN %LET lastrun=1;
          %do s=1 %to &nsource;
-            %let type = %lowcase(%scan(&SOURCE,&s));
+            %let stype = %lowcase(%scan(&SOURCE,&s));
             %let RC=;
 
-          
-%findrows(outdata=&type.&code.ALL&s, outcome=&code, code=&&type&code, indata=&indata,
+          %if &type=&source %then %let ftype=pri; %else %let ftype=&type;
+          %put >Search for &type.&code in &stype.&ftype: &&&stype.&ftype <;
+          %if %symexist(&stype.&ftype) %then %do;
+           %findrows(outdata=&type.&code.ALL&s, outcome=&code, code=&&type&code, indata=&indata,
           fromyear=&fromyear, type=&type, SOURCE=&stype, returncode=RC,
           fromdate=&fromdate, todate=&todate,
           getvar=&getvar, subset=&subset); /*See above*/
-
+           %end;
 %if &RC=0 %then %do;
    %let filelist= &filelist &type.&code.ALL&s(in=in&s) ;;
    %let filelist2= &filelist2 &type.&code.ALL&s ;;
@@ -280,8 +282,11 @@ proc sql inobs=&sqlmax;
    %end;
 
    ;
-
 quit;
+%if &lastrun=1 %THEN %DO;
+   %cleanup(&locdsn1 &locdsn2 &locdsn3);
+%END;
+%end; /* line 185 */
 %if &sqlrc=0 or &i=1 %then %do;
 data &outdata;
 %if &sqlrc=0 or &i>1 %then %do;   set
@@ -296,11 +301,9 @@ data &outdata;
    &type.outcome="&outcome";
 run;
 %end;
-%end;
+
 %let I=%eval(&I+1);
-%if &lastrun=1 %THEN %DO;
-   %cleanup(&locdsn1 &locdsn2 &locdsn3);
-%END;
+
 %end;
 
 %cleanup(&localoutdata);
